@@ -6,7 +6,7 @@ from model_class import SignLanguageTranslationModel
 
 app = Flask(__name__)
 
-model_path = r"C:\Users\User\OneDrive\바탕 화면\졸업프로젝트\modelServer\src\trainAll_state.pth"
+model_path = "/home/ubuntu/modelServer/src/trainAll_state.pth"
 #model = torch.load(model_path, map_location=torch.device('cpu'))
 # 모델 객체 생성
 pose_input_dim = 4  # 적절한 입력 차원 설정
@@ -18,7 +18,7 @@ model = SignLanguageTranslationModel(pose_input_dim, hand_input_dim, meaning_inp
 model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
 model.eval()  
 
-meaning_dict_path = r"C:\Users\User\OneDrive\바탕 화면\졸업프로젝트\modelServer\src\meaning_dict.pkl"
+meaning_dict_path = "/home/ubuntu/modelServer/src/meaning_dict.pkl"
 with open(meaning_dict_path, 'rb') as f:
   meaning_dict = pickle.load(f)
 
