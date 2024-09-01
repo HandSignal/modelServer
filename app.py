@@ -23,7 +23,10 @@ with open(meaning_dict_path, 'rb') as f:
   meaning_dict = pickle.load(f)
 
 
-def preprocess_keypoints(keypoints, input_dim):
+def preprocess_keypoints(keypoints, input_dim, target_num_keypoints):
+    if not keypoints:  # 빈 배열일 경우
+        return torch.zeros((1, target_num_keypoints, input_dim))  # 0으로 채운 텐서 반환
+
     x = [kp['x'] for kp in keypoints]
     y = [kp['y'] for kp in keypoints]
     z = [kp['z'] for kp in keypoints]
@@ -33,27 +36,37 @@ def preprocess_keypoints(keypoints, input_dim):
         tensor = torch.tensor([x, y, z, visibility]).float().unsqueeze(0)  # (1, 4, num_keypoints)
     else:
         tensor = torch.tensor([x, y, z]).float().unsqueeze(0)  # (1, 3, num_keypoints)
+    # 패딩 적용
+    num_keypoints = tensor.size(2)
+    if num_keypoints < target_num_keypoints:
+        padding = torch.zeros((1, tensor.size(1), target_num_keypoints - num_keypoints)).float()
+        tensor = torch.cat((tensor, padding), dim=2)
+    elif num_keypoints > target_num_keypoints:
+        tensor = tensor[:, :, :target_num_keypoints]  # 넘치는 부분 잘라냄
 
-    return tensor.transpose(1, 2)  # (1, num_keypoints, input_dim)
+    return tensor.transpose(1, 2)  # (1, target_num_keypoints, input_dim)
 
 def infer_meaning(model, pose_keypoints, left_hand_keypoints, right_hand_keypoints, meaning_dict):
-    pose_tensor = preprocess_keypoints(pose_keypoints, input_dim=4)
-    left_hand_tensor = preprocess_keypoints(left_hand_keypoints, input_dim=3)
-    right_hand_tensor = preprocess_keypoints(right_hand_keypoints, input_dim=3)
+    max_num_keypoints_pose = 33  # 포즈의 최대 키포인트 수
+    max_num_keypoints_hand = 21  # 손의 최대 키포인트 수
+
+    pose_tensor = preprocess_keypoints(pose_keypoints, input_dim=4, target_num_keypoints=max_num_keypoints_pose)
+    left_hand_tensor = preprocess_keypoints(left_hand_keypoints, input_dim=3, target_num_keypoints=max_num_keypoints_hand)
+    right_hand_tensor = preprocess_keypoints(right_hand_keypoints, input_dim=3, target_num_keypoints=max_num_keypoints_hand)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     model = model.to(device)
+
+    # 입력 텐서를 각각의 입력으로 모델에 전달
     pose_tensor = pose_tensor.to(device)
     left_hand_tensor = left_hand_tensor.to(device)
     right_hand_tensor = right_hand_tensor.to(device)
 
-    hand_inputs = torch.cat((left_hand_tensor, right_hand_tensor), dim=2)
-
+    # 의미 입력이 비어있다면, 기본 텐서 생성
     meaning_inputs = torch.zeros((1, 1, 5000)).to(device)
 
     with torch.no_grad():
-        outputs = model(pose_tensor, hand_inputs, meaning_inputs)
+        outputs = model(pose_tensor, torch.cat((left_hand_tensor, right_hand_tensor), dim=2), meaning_inputs)
 
     # 소프트맥스를 통해 확률 분포로 변환
     probabilities = torch.softmax(outputs, dim=1)
