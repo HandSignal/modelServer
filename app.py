@@ -3,8 +3,11 @@ import torch
 import json
 import pickle
 from model_class import SignLanguageTranslationModel
+from flask_cors import CORS
+import requests
 
 app = Flask(__name__)
+CORS(app)
 
 model_path = "/home/ubuntu/modelServer/src/trainAll_state.pth"
 #model = torch.load(model_path, map_location=torch.device('cpu'))
@@ -83,9 +86,10 @@ def infer_meaning(model, pose_keypoints, left_hand_keypoints, right_hand_keypoin
 
     return predicted_meaning
 
-#@app.route('/')
-#def home():
-#    return 'This is Home!'
+def load_json_from_url(url):
+    response = requests.get(url)
+    response.raise_for_status()  # HTTP 에러 발생 시 예외 발생
+    return response.json()
 
 @app.route('/')
 def index():
@@ -93,6 +97,27 @@ def index():
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    # URL에서 JSON 데이터를 가져오는 부분
+    json_url = r"https://hand-coordinates-json.s3.ap-northeast-2.amazonaws.com/%EB%8B%B5_%EA%B3%A0%EB%AF%BC.json"
+
+    try:
+        json_data = load_json_from_url(json_url)
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+    # 예측 수행
+    predicted_meaning = infer_meaning(model, json_data["pose_keypoint"][0], json_data["left_hand_keypoint"][0], json_data["right_hand_keypoint"][0], meaning_dict)
+    
+    # 응답 반환
+    response = jsonify(predicted_meaning)
+    response.headers.add('Content-Type', 'application/json; charset=utf-8')
+
+    return response
+    
+    
+app.route('/get', methods=['GET'])
+def get():
+    #AWS s3에서 가져오는 코드 추가
     if request.method == 'POST':
        
         if 'data' not in request.files:
