@@ -93,7 +93,7 @@ def predict():
 
         
         predicted_meaning = infer_meaning(model, json_data["pose_keypoint"][0], json_data["left_hand_keypoint"][0], json_data["right_hand_keypoint"][0], meaning_dict)
-        response = jsonify({'predicted_meaning': predicted_meaning})
+        response = jsonify(predicted_meaning)
         response.headers.add('Content-Type', 'application/json; charset=utf-8')
 
         return response
