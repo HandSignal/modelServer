@@ -113,7 +113,11 @@ def predict():
     response = jsonify(predicted_meaning)
     response.headers.add('Content-Type', 'application/json; charset=utf-8')
 
-    return response
+    return app.response_class(
+        response=json.dumps(predicted_meaning, ensure_ascii=False),
+        status=200,
+        mimetype='application/json'
+    )
     
 
 if __name__ == '__main__':
