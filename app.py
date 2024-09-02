@@ -97,8 +97,11 @@ def index():
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    data = requests
+    json_url = data.get('s3url')
+    
     # URL에서 JSON 데이터를 가져오는 부분
-    json_url = r"https://hand-coordinates-json.s3.ap-northeast-2.amazonaws.com/%EB%8B%B5_%EA%B3%A0%EB%AF%BC.json"
+    #json_url = r"https://hand-coordinates-json.s3.ap-northeast-2.amazonaws.com/%EB%8B%B5_%EA%B3%A0%EB%AF%BC.json"
 
     try:
         json_data = load_json_from_url(json_url)
@@ -114,27 +117,6 @@ def predict():
 
     return response
     
-    
-app.route('/get', methods=['GET'])
-def get():
-    #AWS s3에서 가져오는 코드 추가
-    if request.method == 'POST':
-       
-        if 'data' not in request.files:
-            return jsonify({'error': 'No file part'})
-
-        file = request.files['data']
-        if file.filename == '':
-            return jsonify({'error': 'No selected file'})
-
-        json_data = json.load(file)
-
-        
-        predicted_meaning = infer_meaning(model, json_data["pose_keypoint"][0], json_data["left_hand_keypoint"][0], json_data["right_hand_keypoint"][0], meaning_dict)
-        response = jsonify(predicted_meaning)
-        response.headers.add('Content-Type', 'application/json; charset=utf-8')
-
-        return response
 
 if __name__ == '__main__':
     app.run('0.0.0.0', port=5000, debug=True)
