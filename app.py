@@ -95,8 +95,8 @@ def index():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    data = requests
-    json_url = data.get('s3url')
+    data = request.get_json()
+    json_url = data['s3url']
     
     # URL에서 JSON 데이터를 가져오는 부분
     #json_url = r"https://hand-coordinates-json.s3.ap-northeast-2.amazonaws.com/%EB%8B%B5_%EA%B3%A0%EB%AF%BC.json"
