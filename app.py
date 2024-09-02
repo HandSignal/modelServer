@@ -3,11 +3,9 @@ import torch
 import json
 import pickle
 from model_class import SignLanguageTranslationModel
-from flask_cors import CORS
 import requests
 
 app = Flask(__name__)
-CORS(app)
 
 model_path = "/home/ubuntu/modelServer/src/trainAll_state.pth"
 #model = torch.load(model_path, map_location=torch.device('cpu'))
