@@ -5,12 +5,12 @@ import pickle
 from model_class import SignLanguageTranslationModel
 import requests
 import torch.nn.functional as F
-#from flask_cors import CORS
+from flask_cors import CORS
 
 app = Flask(__name__)
-#CORS(app)
+CORS(app, resources={r"/*": {"origins": "http://43.203.16.219:8080"}})
 
-model_path = "/home/choijjyoGrad/modelServer/src/trainAll_embedding_state_epoch10.pth"
+model_path = "/home/ubuntu/modelServer/src/trainAll_embedding_state_epoch10.pth"
 #model = torch.load(model_path, map_location=torch.device('cpu'))
 # 모델 객체 생성
 pose_input_dim = 4  # 적절한 입력 차원 설정
@@ -26,7 +26,7 @@ model.eval()
 # with open(meaning_dict_path, 'rb') as f:
 #   meaning_dict = pickle.load(f)
 
-embedding_dict_path = "/home/choijjyoGrad/modelServer/src/embedding_dict_5000_new.pkl"
+embedding_dict_path = "/home/ubuntu/modelServer/src/embedding_dict_5000_new.pkl"
 with open(embedding_dict_path, 'rb') as f:
   embedding_dict = pickle.load(f)
 
