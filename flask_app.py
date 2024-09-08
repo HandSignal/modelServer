@@ -5,9 +5,10 @@ import pickle
 from model_class import SignLanguageTranslationModel
 import requests
 import torch.nn.functional as F
-import numpy as np
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 model_path = "/home/choijjyoGrad/modelServer/src/trainAll_embedding_state_epoch10.pth"
 #model = torch.load(model_path, map_location=torch.device('cpu'))
