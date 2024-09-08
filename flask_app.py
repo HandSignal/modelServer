@@ -5,10 +5,10 @@ import pickle
 from model_class import SignLanguageTranslationModel
 import requests
 import torch.nn.functional as F
-from flask_cors import CORS
+#from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
+#CORS(app)
 
 model_path = "/home/choijjyoGrad/modelServer/src/trainAll_embedding_state_epoch10.pth"
 #model = torch.load(model_path, map_location=torch.device('cpu'))
@@ -104,10 +104,10 @@ def index():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    #data = request.get_json()
-    #json_url = data['s3url'].strip('\"')
+    data = request.get_json()
+    json_url = data['s3url'].strip('\"')
     
-    json_url = r"https://hand-coordinates-json.s3.ap-northeast-2.amazonaws.com/%EB%8B%B5_%EA%B3%A0%EB%AF%BC.json"
+    #json_url = r"https://hand-coordinates-json.s3.ap-northeast-2.amazonaws.com/%EB%8B%B5_%EA%B3%A0%EB%AF%BC.json"
     try:
         json_data = load_json_from_url(json_url)
     except Exception as e:
