@@ -21,9 +21,9 @@ model = SignLanguageTranslationModel(pose_input_dim, hand_input_dim, meaning_inp
 model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
 model.eval()  
 
-meaning_dict_path = "/home/choijjyoGrad/modelServer/src/meaning_dict.pkl"
-with open(meaning_dict_path, 'rb') as f:
-  meaning_dict = pickle.load(f)
+# meaning_dict_path = "/home/choijjyoGrad/modelServer/src/meaning_dict.pkl"
+# with open(meaning_dict_path, 'rb') as f:
+#   meaning_dict = pickle.load(f)
 
 embedding_dict_path = "/home/choijjyoGrad/modelServer/src/embedding_dict_5000_new.pkl"
 with open(embedding_dict_path, 'rb') as f:
