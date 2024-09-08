@@ -105,8 +105,9 @@ def index():
 @app.route('/predict', methods=['POST'])
 def predict():
     #data = request.get_json()
-    json_url = request.get_data(as_text=True)
+    #json_url = data['s3url'].strip('\"')
     
+    json_url = r"https://hand-coordinates-json.s3.ap-northeast-2.amazonaws.com/%EB%8B%B5_%EA%B3%A0%EB%AF%BC.json"
     try:
         json_data = load_json_from_url(json_url)
     except Exception as e:
