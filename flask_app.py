@@ -104,8 +104,8 @@ def index():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    data = request.get_json()
-    json_url = data['s3url'].strip('\"')
+    #data = request.get_json()
+    json_url = request.get_data(as_text=True)
     
     try:
         json_data = load_json_from_url(json_url)
