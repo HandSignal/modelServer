@@ -1,5 +1,5 @@
-.flask_app_withEmbedding_before.py
-.local.py
+flask_app_withEmbedding_before.py
+local.py
 src\meaning_dict.pkl
 src\trainAll_embedding_state_epoch5.pth
 src\embedding_dict.pkl
