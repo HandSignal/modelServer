@@ -1,8 +1,10 @@
 flask_app_withEmbedding_before.py
 local.py
+/__pycache__
 /src/meaning_dict.pkl
 /src/trainAll_embedding_state_epoch5.pth
 /src/embedding_dict.pkl
 /src/embedding_dict_5000.pkl
 /src/trainAll_embedding_state_epoch2.pth
 /src/trainAll_state.pth
+/src/trainAll_embedding_epoch10.pth
