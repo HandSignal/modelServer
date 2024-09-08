@@ -9,7 +9,7 @@ import numpy as np
 
 app = Flask(__name__)
 
-model_path = "/home/choijjyoGrad/modelServer/src/trainAll_embedding_state_epoch5.pth"
+model_path = "/home/choijjyoGrad/modelServer/src/trainAll_embedding_state_epoch10.pth"
 #model = torch.load(model_path, map_location=torch.device('cpu'))
 # 모델 객체 생성
 pose_input_dim = 4  # 적절한 입력 차원 설정
@@ -25,7 +25,7 @@ meaning_dict_path = "/home/choijjyoGrad/modelServer/src/meaning_dict.pkl"
 with open(meaning_dict_path, 'rb') as f:
   meaning_dict = pickle.load(f)
 
-embedding_dict_path = "/home/choijjyoGrad/modelServer/src/embedding_dict_5000.pkl"
+embedding_dict_path = "/home/choijjyoGrad/modelServer/src/embedding_dict_5000_new.pkl"
 with open(embedding_dict_path, 'rb') as f:
   embedding_dict = pickle.load(f)
 
