@@ -4,15 +4,17 @@ import json
 import pickle
 from model_class import SignLanguageTranslationModel
 import requests
+import torch.nn.functional as F
+import numpy as np
 
 app = Flask(__name__)
 
-model_path = "/home/choijjyoGrad/modelServer/src/trainAll_state.pth"
+model_path = "/home/choijjyoGrad/modelServer/src/trainAll_embedding_state_epoch5.pth"
 #model = torch.load(model_path, map_location=torch.device('cpu'))
 # 모델 객체 생성
 pose_input_dim = 4  # 적절한 입력 차원 설정
 hand_input_dim = 6
-meaning_input_dim = 5000
+meaning_input_dim = 768
 hidden_dim = 512
 output_dim = 5000
 model = SignLanguageTranslationModel(pose_input_dim, hand_input_dim, meaning_input_dim, hidden_dim, output_dim)
@@ -23,6 +25,9 @@ meaning_dict_path = "/home/choijjyoGrad/modelServer/src/meaning_dict.pkl"
 with open(meaning_dict_path, 'rb') as f:
   meaning_dict = pickle.load(f)
 
+embedding_dict_path = "/home/choijjyoGrad/modelServer/src/embedding_dict_5000.pkl"
+with open(embedding_dict_path, 'rb') as f:
+  embedding_dict = pickle.load(f)
 
 def preprocess_keypoints(keypoints, input_dim, target_num_keypoints):
     if not keypoints:  # 빈 배열일 경우
@@ -47,7 +52,7 @@ def preprocess_keypoints(keypoints, input_dim, target_num_keypoints):
 
     return tensor.transpose(1, 2)  # (1, target_num_keypoints, input_dim)
 
-def infer_meaning(model, pose_keypoints, left_hand_keypoints, right_hand_keypoints, meaning_dict):
+def infer_meaning(model, pose_keypoints, left_hand_keypoints, right_hand_keypoints, embedding_dict):
     max_num_keypoints_pose = 33  # 포즈의 최대 키포인트 수
     max_num_keypoints_hand = 21  # 손의 최대 키포인트 수
 
@@ -69,18 +74,21 @@ def infer_meaning(model, pose_keypoints, left_hand_keypoints, right_hand_keypoin
     with torch.no_grad():
         outputs = model(pose_tensor, torch.cat((left_hand_tensor, right_hand_tensor), dim=2), meaning_inputs)
 
-    # 소프트맥스를 통해 확률 분포로 변환
-    probabilities = torch.softmax(outputs, dim=1)
-
-    # 가장 높은 확률을 가진 클래스 예측
-    predicted_class_index = torch.argmax(probabilities, dim=1).item()
-
-    # 예측된 의미 출력
+    # 임베딩 결과와 비교하기 위해 모델의 출력 값을 얻음
+    model_embedding = outputs.squeeze(0)  # 모델 출력의 임베딩 벡터화
+    
+    # 코사인 유사도를 사용하여 가장 유사한 임베딩을 찾음
+    best_similarity = -1  # 초기값은 매우 낮은 유사도
     predicted_meaning = None
-    for meaning, index in meaning_dict.items():
-      if index == predicted_class_index:
-        predicted_meaning = meaning
-        break
+
+    # embedding_dict의 각 임베딩과 모델 출력 임베딩 간의 코사인 유사도 계산
+    for meaning, embedding in embedding_dict.items():
+        embedding_tensor = torch.tensor(embedding).to(device)
+        similarity = F.cosine_similarity(model_embedding, embedding_tensor, dim=0)
+
+        if similarity.item() > best_similarity:
+            best_similarity = similarity.item()
+            predicted_meaning = meaning
 
     return predicted_meaning
 
@@ -98,18 +106,12 @@ def predict():
     data = request.get_json()
     json_url = data['s3url'].strip('\"')
     
-    # URL에서 JSON 데이터를 가져오는 부분
-    #json_url = r"https://hand-coordinates-json.s3.ap-northeast-2.amazonaws.com/%EB%8B%B5_%EA%B3%A0%EB%AF%BC.json"
-
     try:
         json_data = load_json_from_url(json_url)
     except Exception as e:
         return jsonify({'error': str(e)})
 
-    # 예측 수행
-    predicted_meaning = infer_meaning(model, json_data["pose_keypoint"][0], json_data["left_hand_keypoint"][0], json_data["right_hand_keypoint"][0], meaning_dict)
-    
-    # 응답 반환
+    predicted_meaning = infer_meaning(model, json_data["pose_keypoint"][0], json_data["left_hand_keypoint"][0], json_data["right_hand_keypoint"][0], embedding_dict)
     response = jsonify(predicted_meaning)
     response.headers.add('Content-Type', 'application/json; charset=utf-8')
 
