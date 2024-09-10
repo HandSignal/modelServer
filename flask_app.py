@@ -70,7 +70,7 @@ def infer_meaning(model, pose_keypoints, left_hand_keypoints, right_hand_keypoin
     right_hand_tensor = right_hand_tensor.to(device)
 
     # 의미 입력이 비어있다면, 기본 텐서 생성
-    meaning_inputs = torch.zeros((1, 1, 5000)).to(device)
+    meaning_inputs = torch.zeros((1, 1, 768)).to(device)
 
     with torch.no_grad():
         outputs = model(pose_tensor, torch.cat((left_hand_tensor, right_hand_tensor), dim=2), meaning_inputs)
