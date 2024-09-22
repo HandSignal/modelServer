@@ -16,3 +16,4 @@ temp.py
 /src/test_embedding.pth
 /src/test.pth
 /src/trainAll_embedding_state_epoch10.pth
+/src/train_All_test_embedding.pth
