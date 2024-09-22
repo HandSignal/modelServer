@@ -11,12 +11,9 @@ CORS(app, resources={r"/*": {"origins": "http://43.203.16.219:8080"}})
 model_path = "/home/ubuntu/modelServer/src/final_model.h5"
 model = tf.keras.models.load_model(model_path) 
 
-# 사용할 액션 레이블 리스트 (모델에서 예측할 클래스)
 actions = np.array(['안녕하세요', '사랑합니다', '고맙습니다', '너', '나', '행복합니다', '만나다', '떠나다', '만나서 반갑습니다', '이름'])
 
-# 좌표값을 전처리하는 함수
 def preprocess_keypoints(pose_keypoints, left_hand_keypoints, right_hand_keypoints):
-    # 키포인트를 flatten하여 배열 생성
     pose = np.array([[kp['x'], kp['y'], kp['z'], kp['visibility']] for kp in pose_keypoints]).flatten() \
         if pose_keypoints else np.zeros(33 * 4)
     lh = np.array([[kp['x'], kp['y'], kp['z']] for kp in left_hand_keypoints]).flatten() \
@@ -24,10 +21,8 @@ def preprocess_keypoints(pose_keypoints, left_hand_keypoints, right_hand_keypoin
     rh = np.array([[kp['x'], kp['y'], kp['z']] for kp in right_hand_keypoints]).flatten() \
         if right_hand_keypoints else np.zeros(21 * 3)
     
-    # 모든 키포인트 결합
     keypoints = np.concatenate([pose, lh, rh])
 
-    # shape를 (30, 258)로 맞추기 위해 패딩 또는 트리밍
     if keypoints.shape[0] < 30 * 258:
         # 패딩 추가
         padding = np.zeros((30 * 258 - keypoints.shape[0],))
@@ -43,10 +38,7 @@ def preprocess_keypoints(pose_keypoints, left_hand_keypoints, right_hand_keypoin
 def infer_action(model, pose_keypoints, left_hand_keypoints, right_hand_keypoints):
     keypoints = preprocess_keypoints(pose_keypoints, left_hand_keypoints, right_hand_keypoints)
     
-    # 예측 수행
     predictions = model.predict(keypoints)
-    
-    # 가장 높은 확률을 가진 액션 선택
     predicted_action = actions[np.argmax(predictions)]
     
     return predicted_action
