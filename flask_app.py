@@ -1,47 +1,97 @@
-import requests
 from flask import Flask, render_template, request, jsonify
+import torch
 import json
-import tensorflow as tf
-import numpy as np
+import pickle
+from model_class import SignLanguageTranslationModel
+import requests
+import torch.nn.functional as F
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://43.203.16.219:8080"}})
 
-model_path = "/home/ubuntu/modelServer/src/final_model.h5"
-model = tf.keras.models.load_model(model_path) 
+model_path = "/home/ubuntu/modelServer/src/train_All_test_embedding_state.pth"
+#model = torch.load(model_path, map_location=torch.device('cpu'))
+# 모델 객체 생성
+pose_input_dim = 4  # 적절한 입력 차원 설정
+hand_input_dim = 6
+meaning_input_dim = 768
+hidden_dim = 512
+output_dim = 5000
+model = SignLanguageTranslationModel(pose_input_dim, hand_input_dim, meaning_input_dim, hidden_dim, output_dim)
+model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+model.eval()  
 
-actions = np.array(['안녕하세요', '사랑합니다', '고맙습니다', '너', '나', '행복합니다', '만나다', '떠나다', '만나서 반갑습니다', '이름'])
+# meaning_dict_path = "/home/choijjyoGrad/modelServer/src/meaning_dict.pkl"
+# with open(meaning_dict_path, 'rb') as f:
+#   meaning_dict = pickle.load(f)
 
-def preprocess_keypoints(pose_keypoints, left_hand_keypoints, right_hand_keypoints):
-    pose = np.array([[kp['x'], kp['y'], kp['z'], kp['visibility']] for kp in pose_keypoints]).flatten() \
-        if pose_keypoints else np.zeros(33 * 4)
-    lh = np.array([[kp['x'], kp['y'], kp['z']] for kp in left_hand_keypoints]).flatten() \
-        if left_hand_keypoints else np.zeros(21 * 3)
-    rh = np.array([[kp['x'], kp['y'], kp['z']] for kp in right_hand_keypoints]).flatten() \
-        if right_hand_keypoints else np.zeros(21 * 3)
-    
-    keypoints = np.concatenate([pose, lh, rh])
+embedding_dict_path = "/home/ubuntu/modelServer/src/embedding_dict_new.pkl"
+with open(embedding_dict_path, 'rb') as f:
+  embedding_dict = pickle.load(f)
 
-    if keypoints.shape[0] < 30 * 258:
-        # 패딩 추가
-        padding = np.zeros((30 * 258 - keypoints.shape[0],))
-        keypoints = np.concatenate([keypoints, padding])
+def preprocess_keypoints(keypoints, input_dim, target_num_keypoints):
+    if not keypoints:  # 빈 배열일 경우
+        return torch.zeros((1, target_num_keypoints, input_dim))  # 0으로 채운 텐서 반환
+
+    x = [kp['x'] for kp in keypoints]
+    y = [kp['y'] for kp in keypoints]
+    z = [kp['z'] for kp in keypoints]
+
+    if input_dim == 4:
+        visibility = [kp.get('visibility', 1.0) for kp in keypoints]
+        tensor = torch.tensor([x, y, z, visibility]).float().unsqueeze(0)  # (1, 4, num_keypoints)
     else:
-        # 잘라내기
-        keypoints = keypoints[:30 * 258]
+        tensor = torch.tensor([x, y, z]).float().unsqueeze(0)  # (1, 3, num_keypoints)
+    # 패딩 적용
+    num_keypoints = tensor.size(2)
+    if num_keypoints < target_num_keypoints:
+        padding = torch.zeros((1, tensor.size(1), target_num_keypoints - num_keypoints)).float()
+        tensor = torch.cat((tensor, padding), dim=2)
+    elif num_keypoints > target_num_keypoints:
+        tensor = tensor[:, :, :target_num_keypoints]  # 넘치는 부분 잘라냄
 
-    return keypoints.reshape(1, 30, 258)  # shape: (1, 30, 258)
+    return tensor.transpose(1, 2)  # (1, target_num_keypoints, input_dim)
 
+def infer_meaning(model, pose_keypoints, left_hand_keypoints, right_hand_keypoints, embedding_dict):
+    max_num_keypoints_pose = 33  # 포즈의 최대 키포인트 수
+    max_num_keypoints_hand = 21  # 손의 최대 키포인트 수
 
-# 예측 수행 함수
-def infer_action(model, pose_keypoints, left_hand_keypoints, right_hand_keypoints):
-    keypoints = preprocess_keypoints(pose_keypoints, left_hand_keypoints, right_hand_keypoints)
+    pose_tensor = preprocess_keypoints(pose_keypoints, input_dim=4, target_num_keypoints=max_num_keypoints_pose)
+    left_hand_tensor = preprocess_keypoints(left_hand_keypoints, input_dim=3, target_num_keypoints=max_num_keypoints_hand)
+    right_hand_tensor = preprocess_keypoints(right_hand_keypoints, input_dim=3, target_num_keypoints=max_num_keypoints_hand)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+
+    # 입력 텐서를 각각의 입력으로 모델에 전달
+    pose_tensor = pose_tensor.to(device)
+    left_hand_tensor = left_hand_tensor.to(device)
+    right_hand_tensor = right_hand_tensor.to(device)
+
+    # 의미 입력이 비어있다면, 기본 텐서 생성
+    meaning_inputs = torch.zeros((1, 1, 768)).to(device)
+
+    with torch.no_grad():
+        outputs = model(pose_tensor, torch.cat((left_hand_tensor, right_hand_tensor), dim=2), meaning_inputs)
+
+    # 임베딩 결과와 비교하기 위해 모델의 출력 값을 얻음
+    model_embedding = outputs.squeeze(0)  # 모델 출력의 임베딩 벡터화
     
-    predictions = model.predict(keypoints)
-    predicted_action = actions[np.argmax(predictions)]
-    
-    return predicted_action
+    # 코사인 유사도를 사용하여 가장 유사한 임베딩을 찾음
+    best_similarity = -1  # 초기값은 매우 낮은 유사도
+    predicted_meaning = None
+
+    # embedding_dict의 각 임베딩과 모델 출력 임베딩 간의 코사인 유사도 계산
+    for meaning, embedding in embedding_dict.items():
+        embedding_tensor = torch.tensor(embedding).to(device)
+        similarity = F.cosine_similarity(model_embedding, embedding_tensor, dim=0)
+
+        if similarity.item() > best_similarity:
+            best_similarity = similarity.item()
+            predicted_meaning = meaning
+
+    return predicted_meaning
 
 def load_json_from_url(url):
     response = requests.get(url)
@@ -57,19 +107,13 @@ def predict():
     data = request.get_json()
     json_url = data['s3url'].strip('\"')
     
+    #json_url = r"https://hand-coordinates-json.s3.ap-northeast-2.amazonaws.com/%EB%8B%B5_%EA%B3%A0%EB%AF%BC.json"
     try:
         json_data = load_json_from_url(json_url)
     except Exception as e:
         return jsonify({'error': str(e)})
 
-    # 예측 수행
-    predicted_meaning = infer_action(
-        model,
-        json_data["pose_keypoint"][0], 
-        json_data["left_hand_keypoint"][0], 
-        json_data["right_hand_keypoint"][0]
-    )    
-    # 응답 반환
+    predicted_meaning = infer_meaning(model, json_data["pose_keypoint"][0], json_data["left_hand_keypoint"][0], json_data["right_hand_keypoint"][0], embedding_dict)
     response = jsonify(predicted_meaning)
     response.headers.add('Content-Type', 'application/json; charset=utf-8')
 
@@ -82,3 +126,4 @@ def predict():
 
 if __name__ == '__main__':
     app.run('0.0.0.0', port=5000, debug=True)
+

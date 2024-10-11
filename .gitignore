@@ -10,7 +10,6 @@ temp.py
 /src/trainAll_embedding_state_epoch2.pth
 /src/trainAll_state.pth
 /src/trainAll_embedding_epoch10.pth
-/src/embedding_dict_new.pkl
 /src/embedding_dict_5000_new.pkl
 /src/test_embedding_state.pth
 /src/test_embedding.pth
