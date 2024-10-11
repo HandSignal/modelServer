@@ -69,11 +69,8 @@ def infer_meaning(model, pose_keypoints, left_hand_keypoints, right_hand_keypoin
     left_hand_tensor = left_hand_tensor.to(device)
     right_hand_tensor = right_hand_tensor.to(device)
 
-    # 의미 입력이 비어있다면, 기본 텐서 생성
-    meaning_inputs = torch.zeros((1, 1, 768)).to(device)
-
     with torch.no_grad():
-        outputs = model(pose_tensor, torch.cat((left_hand_tensor, right_hand_tensor), dim=2), meaning_inputs)
+        outputs = model(pose_tensor, torch.cat((left_hand_tensor, right_hand_tensor), dim=2))
 
     # 임베딩 결과와 비교하기 위해 모델의 출력 값을 얻음
     model_embedding = outputs.squeeze(0)  # 모델 출력의 임베딩 벡터화
@@ -85,7 +82,7 @@ def infer_meaning(model, pose_keypoints, left_hand_keypoints, right_hand_keypoin
     # embedding_dict의 각 임베딩과 모델 출력 임베딩 간의 코사인 유사도 계산
     for meaning, embedding in embedding_dict.items():
         embedding_tensor = torch.tensor(embedding).to(device)
-        similarity = F.cosine_similarity(model_embedding, embedding_tensor, dim=0)
+        similarity = F.cosine_similarity(model_embedding.unsqueeze(0), embedding_tensor.unsqueeze(0), dim=1)
 
         if similarity.item() > best_similarity:
             best_similarity = similarity.item()
