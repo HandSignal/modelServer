@@ -18,7 +18,7 @@ hand_input_dim = 6
 meaning_input_dim = 768
 hidden_dim = 512
 output_dim = 5000
-model = SignLanguageTranslationModel(pose_input_dim, hand_input_dim, meaning_input_dim, hidden_dim, output_dim)
+model = SignLanguageTranslationModel(pose_input_dim, hand_input_dim, hidden_dim, output_dim)
 model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
 model.eval()  
 
